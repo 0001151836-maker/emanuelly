@@ -162,14 +162,13 @@
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
-            scroll-behavior: auto;
         }
 
         .photo-gallery::-webkit-scrollbar {
             display: none;
         }
         
-        .photo-gallery.auto-scrolling {
+        .photo-gallery.infinite-scroll {
             scroll-behavior: smooth;
         }
 
@@ -454,8 +453,8 @@
             </div>
 
             <div class="photo-gallery" id="photoGallery">
-                <div class="photo"><img src="https://images.unsplash.com/photo-1518568814500-bf0f8d125f46?w=600" alt="Foto 1"></div>
-                <div class="photo"><img src="https://images.unsplash.com/photo-1606800052052-a08af7148866?w=600" alt="Foto 2"></div>
+                <div class="photo"><img src="images.jpg" alt="Foto 1"></div>
+                <div class="photo"><img src="Captura de tela 2025-10-22 133620.png" alt="Foto 2"></div>
                 <div class="photo"><img src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=600" alt="Foto 3"></div>
                 <div class="photo"><img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=600" alt="Foto 4"></div>
                 <div class="photo"><img src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600" alt="Foto 5"></div>
@@ -510,26 +509,15 @@
     </div>
 
     <script>
+        // Splash screen
         document.getElementById('surpriseBtn').addEventListener('click', function() {
             document.getElementById('splashScreen').classList.add('hidden');
             setTimeout(() => document.getElementById('mainContent').classList.add('visible'), 300);
         });
 
-        const photos = document.querySelectorAll('.photo');
+        // Heart explosion effect
         const heartEmojis = ['❤️', '💕', '💖', '💗', '💓', '💝', '💘'];
         
-        photos.forEach(photo => {
-            photo.addEventListener('click', function(e) {
-                const rect = this.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                for (let i = 0; i < 5; i++) {
-                    setTimeout(() => createHeart(this, x, y), i * 100);
-                }
-            });
-        });
-
         function createHeart(parent, x, y) {
             const heart = document.createElement('div');
             heart.className = 'heart-explosion';
@@ -540,77 +528,83 @@
             setTimeout(() => heart.remove(), 1500);
         }
 
+        // Infinite scroll gallery
         const gallery = document.getElementById('photoGallery');
-        let isScrolling = false;
         let autoScrollInterval;
-        let userInteracting = false;
+        let isUserScrolling = false;
+        let scrollTimeout;
         
-        function addClickToPhoto(photo) {
-            photo.addEventListener('click', function(e) {
-                const rect = this.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                for (let i = 0; i < 5; i++) {
-                    setTimeout(() => createHeart(this, x, y), i * 100);
-                }
+        // Duplicar fotos para scroll infinito
+        function setupInfiniteScroll() {
+            const photos = Array.from(gallery.children);
+            const clones1 = photos.map(photo => photo.cloneNode(true));
+            const clones2 = photos.map(photo => photo.cloneNode(true));
+            
+            clones1.forEach(clone => gallery.appendChild(clone));
+            clones2.forEach(clone => gallery.appendChild(clone));
+            
+            // Adicionar evento de click em todos os clones
+            gallery.querySelectorAll('.photo').forEach(photo => {
+                photo.addEventListener('click', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => createHeart(this, x, y), i * 100);
+                    }
+                });
             });
         }
-
-
+        
+        setupInfiniteScroll();
+        
+        // Auto scroll
+        function startAutoScroll() {
+            gallery.classList.add('infinite-scroll');
+            autoScrollInterval = setInterval(() => {
+                if (!isUserScrolling) {
+                    gallery.scrollLeft += 1;
+                    
+                    // Reset scroll quando chegar no final do primeiro set
+                    const maxScroll = gallery.scrollWidth / 3;
+                    if (gallery.scrollLeft >= maxScroll) {
+                        gallery.classList.remove('infinite-scroll');
+                        gallery.scrollLeft = 1;
+                        setTimeout(() => gallery.classList.add('infinite-scroll'), 50);
+                    }
+                }
+            }, 20);
+        }
+        
+        // Detectar interação do usuário
+        gallery.addEventListener('touchstart', () => {
+            isUserScrolling = true;
+            clearTimeout(scrollTimeout);
+        });
+        
         gallery.addEventListener('touchend', () => {
-            setTimeout(() => {
-                userInteracting = false;
-                
-            }, 3000);
+            scrollTimeout = setTimeout(() => {
+                isUserScrolling = false;
+            }, 2000);
         });
         
         gallery.addEventListener('mousedown', () => {
-            userInteracting = true;
-
+            isUserScrolling = true;
+            clearTimeout(scrollTimeout);
         });
         
         gallery.addEventListener('mouseup', () => {
-            setTimeout(() => {
-                userInteracting = false;
-               
-            }, 3000);
-        });
-
-        gallery.addEventListener('scroll', function() {
-            if (isScrolling) return;
-            
-            const galleryRect = gallery.getBoundingClientRect();
-            const photos = Array.from(gallery.querySelectorAll('.photo'));
-            
-            photos.forEach(photo => {
-                const photoRect = photo.getBoundingClientRect();
-                
-                // Se a foto saiu completamente pela esquerda
-                if (photoRect.right < galleryRect.left - 50) {
-                    isScrolling = true;
-                    const scrollBefore = gallery.scrollLeft;
-                    gallery.appendChild(photo);
-                    gallery.scrollLeft = scrollBefore - photo.offsetWidth - 10;
-                    setTimeout(() => isScrolling = false, 50);
-                }
-                // Se a foto saiu completamente pela direita (scroll reverso)
-                else if (photoRect.left > galleryRect.right + 50) {
-                    isScrolling = true;
-                    const scrollBefore = gallery.scrollLeft;
-                    gallery.insertBefore(photo, gallery.firstChild);
-                    gallery.scrollLeft = scrollBefore + photo.offsetWidth + 10;
-                    setTimeout(() => isScrolling = false, 50);
-                }
-            });
+            scrollTimeout = setTimeout(() => {
+                isUserScrolling = false;
+            }, 2000);
         });
         
-        // Iniciar auto scroll após splash screen
-        setTimeout(() => {
-            startAutoScroll();
-        }, 1000);
-
+        // Iniciar auto scroll após 1 segundo
+        setTimeout(startAutoScroll, 1000);
+        
+        // Countdown
         function updateCountdown() {
-            const startDate = new Date('2025-02-07T00:00:00');
+            const startDate = new Date('2025-02-06T00:00:00');
             const now = new Date();
             const diff = now - startDate;
             
