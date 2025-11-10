@@ -162,13 +162,14 @@
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
+            scroll-behavior: auto;
         }
 
         .photo-gallery::-webkit-scrollbar {
             display: none;
         }
         
-        .photo-gallery.infinite-scroll {
+        .photo-gallery.auto-scrolling {
             scroll-behavior: smooth;
         }
 
@@ -509,15 +510,26 @@
     </div>
 
     <script>
-        // Splash screen
         document.getElementById('surpriseBtn').addEventListener('click', function() {
             document.getElementById('splashScreen').classList.add('hidden');
             setTimeout(() => document.getElementById('mainContent').classList.add('visible'), 300);
         });
 
-        // Heart explosion effect
+        const photos = document.querySelectorAll('.photo');
         const heartEmojis = ['❤️', '💕', '💖', '💗', '💓', '💝', '💘'];
         
+        photos.forEach(photo => {
+            photo.addEventListener('click', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                 for (let i = 0; i < 5; i++) {
+                    setTimeout(() => createHeart(this, x, y), i * 100);
+                }
+            });
+        });
+
         function createHeart(parent, x, y) {
             const heart = document.createElement('div');
             heart.className = 'heart-explosion';
@@ -528,81 +540,48 @@
             setTimeout(() => heart.remove(), 1500);
         }
 
-        // Infinite scroll gallery
         const gallery = document.getElementById('photoGallery');
+        let isScrolling = false;
         let autoScrollInterval;
-        let isUserScrolling = false;
-        let scrollTimeout;
+        let userInteracting = false;
         
-        // Duplicar fotos para scroll infinito
-        function setupInfiniteScroll() {
-            const photos = Array.from(gallery.children);
-            const clones1 = photos.map(photo => photo.cloneNode(true));
-            const clones2 = photos.map(photo => photo.cloneNode(true));
-            
-            clones1.forEach(clone => gallery.appendChild(clone));
-            clones2.forEach(clone => gallery.appendChild(clone));
-            
-            // Adicionar evento de click em todos os clones
-            gallery.querySelectorAll('.photo').forEach(photo => {
-                photo.addEventListener('click', function(e) {
-                    const rect = this.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    for (let i = 0; i < 5; i++) {
-                        setTimeout(() => createHeart(this, x, y), i * 100);
-                    }
-                });
+        function addClickToPhoto(photo) {
+            photo.addEventListener('click', function(e) {
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => createHeart(this, x, y), i * 100);
+                }
             });
         }
-        
-        setupInfiniteScroll();
-        
-        // Auto scroll
-        function startAutoScroll() {
-            gallery.classList.add('infinite-scroll');
-            autoScrollInterval = setInterval(() => {
-                if (!isUserScrolling) {
-                    gallery.scrollLeft += 1;
-                    
-                    // Reset scroll quando chegar no final do primeiro set
-                    const maxScroll = gallery.scrollWidth / 3;
-                    if (gallery.scrollLeft >= maxScroll) {
-                        gallery.classList.remove('infinite-scroll');
-                        gallery.scrollLeft = 1;
-                        setTimeout(() => gallery.classList.add('infinite-scroll'), 50);
-                    }
-                }
-            }, 20);
-        }
-        
-        // Detectar interação do usuário
-        gallery.addEventListener('touchstart', () => {
-            isUserScrolling = true;
-            clearTimeout(scrollTimeout);
-        });
-        
-        gallery.addEventListener('touchend', () => {
-            scrollTimeout = setTimeout(() => {
-                isUserScrolling = false;
-            }, 2000);
-        });
+
+
         
         gallery.addEventListener('mousedown', () => {
-            isUserScrolling = true;
-            clearTimeout(scrollTimeout);
+            userInteracting = true;
         });
         
         gallery.addEventListener('mouseup', () => {
-            scrollTimeout = setTimeout(() => {
-                isUserScrolling = false;
-            }, 2000);
+            setTimeout(() => {
+                userInteracting = false;
+            }, 3000);
+        });
+
+        gallery.addEventListener('scroll', function() {
+            if (isScrolling) return;
+            
+            const galleryRect = gallery.getBoundingClientRect();
+            const photos = Array.from(gallery.querySelectorAll('.photo'));
+            
+            photos.forEach(photo => {
+                const photoRect = photo.getBoundingClientRect();
+                
+         
+             
+            });
         });
         
-        // Iniciar auto scroll após 1 segundo
-        setTimeout(startAutoScroll, 1000);
-        
-        // Countdown
         function updateCountdown() {
             const startDate = new Date('2025-02-06T00:00:00');
             const now = new Date();
